@@ -1,0 +1,17 @@
+[server]
+port = 8501
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+
+[app]
+mainFile = "simple_deal_dashboard.py"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#20B2AA"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
