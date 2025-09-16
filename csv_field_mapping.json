@@ -1,0 +1,288 @@
+{
+  "csv_field_mapping": {
+    "deal_id": {
+      "description": "Unique HubSpot deal identifier",
+      "type": "string",
+      "example": "19663732522",
+      "usage": "Primary key for identifying deals"
+    },
+    "created_at": {
+      "description": "Timestamp when the deal was created in HubSpot",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track deal creation timeline"
+    },
+    "updated_at": {
+      "description": "Timestamp when the deal was last modified in HubSpot",
+      "type": "datetime",
+      "example": "2025-09-15T10:45:36.400Z",
+      "usage": "Track deal modification timeline"
+    },
+    "dealname": {
+      "description": "Human-readable name of the deal",
+      "type": "string",
+      "example": "Arieotech",
+      "usage": "Deal identification and reporting"
+    },
+    "hs_v2_date_entered_current_stage": {
+      "description": "Date entered current stage",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track when deal entered its current stage"
+    },
+    "hs_v2_date_entered_1091569281": {
+      "description": "Date entered 'Sign-up (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track sign-up stage progression"
+    },
+    "hs_v2_date_entered_202676095": {
+      "description": "Date entered 'Junk (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track junk stage progression"
+    },
+    "hs_v2_date_entered_appointmentscheduled": {
+      "description": "Date entered 'Relevant Reply (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track relevant reply stage progression"
+    },
+    "hs_v2_date_entered_1053523303": {
+      "description": "Date entered 'Outreach done (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track outreach completion stage"
+    },
+    "hs_v2_date_entered_qualifiedtobuy": {
+      "description": "Date entered 'Demo Booked (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track demo booking stage"
+    },
+    "hs_v2_date_entered_presentationscheduled": {
+      "description": "Date entered 'Demo Done (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track demo completion stage"
+    },
+    "hs_v2_date_entered_contractsent": {
+      "description": "Date entered 'Customer Converted (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track customer conversion stage"
+    },
+    "hs_v2_date_entered_981662285": {
+      "description": "Date entered 'Not a good fit (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track not a good fit stage"
+    },
+    "hs_v2_date_entered_1141834547": {
+      "description": "Date entered 'Post-demo follow-up (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track post-demo follow-up stage"
+    },
+    "hs_v2_date_entered_1053523302": {
+      "description": "Date entered 'To reach out (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track to reach out stage"
+    },
+    "hs_v2_date_entered_1120008054": {
+      "description": "Date entered 'Timing not right (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track timing not right stage"
+    },
+    "hs_v2_date_entered_closedwon": {
+      "description": "Date entered 'Closed Won (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track closed won stage"
+    },
+    "hs_v2_date_entered_999971918": {
+      "description": "Date entered 'Cold call done (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track cold call completion stage"
+    },
+    "hs_v2_date_entered_closedlost": {
+      "description": "Date entered 'Closed Lost (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track closed lost stage"
+    },
+    "hs_v2_date_entered_202676096": {
+      "description": "Date entered 'No Show (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track no show stage"
+    },
+    "hs_v2_date_entered_1053523301": {
+      "description": "Date entered 'Follow-up done (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track follow-up completion stage"
+    },
+    "hs_v2_date_entered_1155516059": {
+      "description": "Date entered 'PoC not right but company relevant (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track PoC not right stage"
+    },
+    "hs_v2_date_entered_1158033067": {
+      "description": "Date entered '$$$$ follow-ups (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track $$$$ follow-ups stage"
+    },
+    "hs_v2_date_entered_1053507879": {
+      "description": "Date entered 'Churned (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track churned stage"
+    },
+    "hs_v2_date_entered_1155410330": {
+      "description": "Date entered 'Active trial $$$$ #haisha (Prospects pipeline)'",
+      "type": "datetime",
+      "example": "2024-05-28T05:33:09.564Z",
+      "usage": "Track active trial stage"
+    }
+  },
+  "data_usage_guide": {
+    "pipeline_stages": {
+      "description": "The Prospects pipeline stages in chronological order",
+      "stages": [
+        {
+          "stage": "Sign-up",
+          "api_field": "hs_v2_date_entered_1091569281",
+          "description": "Initial sign-up stage"
+        },
+        {
+          "stage": "Outreach done",
+          "api_field": "hs_v2_date_entered_1053523303",
+          "description": "Outreach activities completed"
+        },
+        {
+          "stage": "Demo Booked",
+          "api_field": "hs_v2_date_entered_qualifiedtobuy",
+          "description": "Demo appointment scheduled"
+        },
+        {
+          "stage": "Demo Done",
+          "api_field": "hs_v2_date_entered_presentationscheduled",
+          "description": "Demo presentation completed"
+        },
+        {
+          "stage": "Customer Converted",
+          "api_field": "hs_v2_date_entered_contractsent",
+          "description": "Customer successfully converted"
+        },
+        {
+          "stage": "Closed Won",
+          "api_field": "hs_v2_date_entered_closedwon",
+          "description": "Deal closed and won"
+        }
+      ]
+    },
+    "negative_stages": {
+      "description": "Stages indicating deals that didn't progress positively",
+      "stages": [
+        {
+          "stage": "Junk",
+          "api_field": "hs_v2_date_entered_202676095",
+          "description": "Deal marked as junk"
+        },
+        {
+          "stage": "Not a good fit",
+          "api_field": "hs_v2_date_entered_981662285",
+          "description": "Deal not suitable"
+        },
+        {
+          "stage": "Closed Lost",
+          "api_field": "hs_v2_date_entered_closedlost",
+          "description": "Deal closed and lost"
+        },
+        {
+          "stage": "Churned",
+          "api_field": "hs_v2_date_entered_1053507879",
+          "description": "Customer churned"
+        }
+      ]
+    },
+    "follow_up_stages": {
+      "description": "Stages for follow-up activities",
+      "stages": [
+        {
+          "stage": "Post-demo follow-up",
+          "api_field": "hs_v2_date_entered_1141834547",
+          "description": "Follow-up after demo"
+        },
+        {
+          "stage": "Follow-up done",
+          "api_field": "hs_v2_date_entered_1053523301",
+          "description": "Follow-up activities completed"
+        },
+        {
+          "stage": "$$$$ follow-ups",
+          "api_field": "hs_v2_date_entered_1158033067",
+          "description": "High-value follow-ups"
+        }
+      ]
+    }
+  },
+  "analysis_tips": {
+    "conversion_funnel": {
+      "description": "Track deal progression through the sales funnel",
+      "recommended_fields": [
+        "hs_v2_date_entered_1091569281",
+        "hs_v2_date_entered_1053523303",
+        "hs_v2_date_entered_qualifiedtobuy",
+        "hs_v2_date_entered_presentationscheduled",
+        "hs_v2_date_entered_contractsent",
+        "hs_v2_date_entered_closedwon"
+      ]
+    },
+    "deal_velocity": {
+      "description": "Calculate time between stages",
+      "method": "Calculate difference between consecutive stage dates",
+      "example": "Demo Booked to Demo Done = hs_v2_date_entered_presentationscheduled - hs_v2_date_entered_qualifiedtobuy"
+    },
+    "stage_conversion_rates": {
+      "description": "Calculate conversion rates between stages",
+      "method": "Count deals with next stage date / Count deals with current stage date",
+      "example": "Sign-up to Demo Booked = Count(hs_v2_date_entered_qualifiedtobuy) / Count(hs_v2_date_entered_1091569281)"
+    },
+    "data_quality": {
+      "description": "Check data completeness",
+      "tips": [
+        "Empty fields indicate deals that haven't reached that stage",
+        "Use hs_v2_date_entered_current_stage to identify current stage",
+        "Check for deals with multiple stage dates for progression analysis"
+      ]
+    }
+  },
+  "sample_queries": {
+    "deals_by_stage": {
+      "description": "Count deals in each stage",
+      "sql_example": "SELECT COUNT(*) FROM deals WHERE hs_v2_date_entered_1091569281 IS NOT NULL"
+    },
+    "conversion_rate": {
+      "description": "Calculate sign-up to demo booked conversion",
+      "sql_example": "SELECT COUNT(hs_v2_date_entered_qualifiedtobuy) / COUNT(hs_v2_date_entered_1091569281) * 100 as conversion_rate"
+    },
+    "average_deal_velocity": {
+      "description": "Average time from sign-up to demo booked",
+      "sql_example": "SELECT AVG(DATEDIFF(hs_v2_date_entered_qualifiedtobuy, hs_v2_date_entered_1091569281)) as avg_days"
+    }
+  },
+  "file_info": {
+    "total_deals": 777,
+    "total_fields": 25,
+    "extraction_date": "2025-09-16",
+    "pipeline": "Prospects pipeline",
+    "data_format": "CSV with ISO datetime strings"
+  }
+}
