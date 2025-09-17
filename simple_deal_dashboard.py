@@ -70,8 +70,50 @@ class HubSpotExtractor:
             "hubspot_owner_id"
         ]
     
+    
+    def get_contact_properties(self, contact_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Get contact properties including lemlist campaign for given contact IDs"""
+        if not contact_ids:
+            return {}
+        
+        contacts_data = {}
+        
+        # Process contacts in batches to avoid API limits
+        batch_size = 100
+        for i in range(0, len(contact_ids), batch_size):
+            batch_ids = contact_ids[i:i + batch_size]
+            
+            try:
+                url = f"{self.base_url}/crm/v3/objects/contacts/batch/read"
+                payload = {
+                    "properties": ["firstname", "lastname", "email", "lemlistlmlstcampaign"],
+                    "inputs": [{"id": contact_id} for contact_id in batch_ids]
+                }
+                
+                response = requests.post(url, headers=self.headers, json=payload)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for result in data.get("results", []):
+                        contact_id = result.get("id")
+                        properties = result.get("properties", {})
+                        contacts_data[contact_id] = {
+                            "firstname": properties.get("firstname", ""),
+                            "lastname": properties.get("lastname", ""),
+                            "email": properties.get("email", ""),
+                            "lemlist_campaign": properties.get("lemlistlmlstcampaign", ""),
+                            "full_name": f"{properties.get('firstname', '')} {properties.get('lastname', '')}".strip()
+                        }
+                else:
+                    st.warning(f"Failed to fetch contact properties: {response.status_code}")
+                    
+            except Exception as e:
+                st.warning(f"Error fetching contact properties: {str(e)}")
+        
+        return contacts_data
+    
     def get_all_deals(self, properties: List[str], limit: int = 100) -> List[Dict[str, Any]]:
-        """Retrieve all deals with specified properties"""
+        """Retrieve all deals with specified properties and associated contacts using optimized batch approach"""
         all_deals = []
         after = None
         page = 1
@@ -79,11 +121,15 @@ class HubSpotExtractor:
         progress_bar = st.progress(0)
         status_text = st.empty()
         
+        # Step 1: Fetch all deals with associations in a single request
+        status_text.text("Fetching deals with contact associations...")
+        
         while True:
             try:
                 url = f"{self.base_url}/crm/v3/objects/deals"
                 params = {
                     "properties": ",".join(properties),
+                    "associations": "contacts",  # This gets contact associations in the same request!
                     "limit": limit
                 }
                 
@@ -99,7 +145,7 @@ class HubSpotExtractor:
                     all_deals.extend(deals)
                     
                     # Update progress
-                    progress_bar.progress(min(page * 0.1, 1.0))
+                    progress_bar.progress(min(page * 0.2, 0.4))
                     
                     # Check if there are more pages
                     paging = data.get("paging", {})
@@ -120,8 +166,58 @@ class HubSpotExtractor:
                 st.error(f"Error occurred: {str(e)}")
                 break
         
+        progress_bar.progress(0.4)
+        status_text.text(f"Retrieved {len(all_deals)} deals, extracting contact IDs...")
+        
+        # Step 2: Extract all unique contact IDs from associations
+        all_contact_ids = set()
+        deal_contact_mapping = {}
+        
+        for deal in all_deals:
+            deal_id = deal.get("id")
+            associations = deal.get("associations", {})
+            contact_associations = associations.get("contacts", {}).get("results", [])
+            
+            contact_ids = []
+            for assoc in contact_associations:
+                contact_id = assoc.get("id")
+                if contact_id:
+                    contact_ids.append(str(contact_id))
+                    all_contact_ids.add(str(contact_id))
+            
+            deal_contact_mapping[deal_id] = contact_ids
+        
+        progress_bar.progress(0.6)
+        status_text.text(f"Found {len(all_contact_ids)} unique contacts, fetching properties...")
+        
+        # Step 3: Batch fetch contact properties
+        contacts_data = self.get_contact_properties(list(all_contact_ids))
+        
+        progress_bar.progress(0.8)
+        status_text.text("Adding contact information to deals...")
+        
+        # Step 4: Add contact information to deals
+        for deal in all_deals:
+            deal_id = deal.get("id")
+            associated_contacts = deal_contact_mapping.get(deal_id, [])
+            
+            # Get the last contact (most recent association)
+            last_contact = None
+            last_lemlist_campaign = ""
+            
+            if associated_contacts:
+                # Get the last contact ID (assuming they're ordered by association date)
+                last_contact_id = associated_contacts[-1]
+                last_contact_data = contacts_data.get(last_contact_id, {})
+                last_contact = last_contact_data.get("full_name", "")
+                last_lemlist_campaign = last_contact_data.get("lemlist_campaign", "")
+            
+            # Add contact information to deal properties
+            deal["properties"]["last_contact_name"] = last_contact or ""
+            deal["properties"]["last_contact_lemlist_campaign"] = last_lemlist_campaign or ""
+        
         progress_bar.progress(1.0)
-        status_text.text(f"Retrieved {len(all_deals)} deals total")
+        status_text.text(f"Retrieved {len(all_deals)} deals with contact associations")
         
         return all_deals
     
@@ -132,7 +228,9 @@ class HubSpotExtractor:
             return
         
         target_properties = self.get_properties_to_extract()
-        fieldnames = ["deal_id", "created_at", "updated_at"] + target_properties
+        # Add the new contact fields to the export
+        contact_fields = ["last_contact_name", "last_contact_lemlist_campaign"]
+        fieldnames = ["deal_id", "created_at", "updated_at"] + target_properties + contact_fields
         
         try:
             with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
@@ -149,6 +247,10 @@ class HubSpotExtractor:
                     properties = deal.get("properties", {})
                     for prop in target_properties:
                         row[prop] = properties.get(prop, "")
+                    
+                    # Add contact information
+                    for contact_field in contact_fields:
+                        row[contact_field] = properties.get(contact_field, "")
                     
                     writer.writerow(row)
             
@@ -233,6 +335,10 @@ def load_and_process_data():
         date_columns = [col for col in df.columns if 'date_entered' in col or col in ['created_at', 'updated_at']]
         for col in date_columns:
             df[col] = robust_date_parser(df[col])
+        
+        # Handle campaign column data types
+        if 'last_contact_lemlist_campaign' in df.columns:
+            df['last_contact_lemlist_campaign'] = df['last_contact_lemlist_campaign'].fillna('').astype(str)
         
         return df
         
@@ -362,8 +468,9 @@ def create_period_matrix(df, start_date, end_date, frequency):
         
         deal_row = {
             'Deal Name': deal_name,
-            'Deal ID': deal_id,
-            'Created': deal['created_at'].strftime('%Y-%m-%d') if pd.notna(deal['created_at']) else 'Unknown'
+            'Deal ID': deal_id,  # Keep Deal ID in backend for HubSpot links
+            'Created': deal['created_at'].strftime('%Y-%m-%d') if pd.notna(deal['created_at']) else 'Unknown',
+            'Lemlist Campaign': deal.get('last_contact_lemlist_campaign', '')
         }
         
         # For each period, find what stage the deal was in
@@ -404,7 +511,7 @@ def create_period_matrix(df, start_date, end_date, frequency):
 def calculate_stagnant_deals(matrix_df, period_dates, frequency):
     """Calculate deals that haven't changed stage for n periods"""
     stagnant_deals = []
-    period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created']]
+    period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created', 'Lemlist Campaign']]
     
     for _, row in matrix_df.iterrows():
         stages = [stage for stage in row[period_columns] if stage]
@@ -716,6 +823,22 @@ def main():
         default=[]
     )
     
+    # Campaign filter
+    st.sidebar.subheader("Lemlist Campaign Filter")
+    if not df.empty and 'last_contact_lemlist_campaign' in df.columns:
+        # Handle mixed data types (strings and NaN/float values)
+        campaign_values = df['last_contact_lemlist_campaign'].dropna().astype(str).unique()
+        all_campaigns = sorted([campaign for campaign in campaign_values if campaign and campaign.strip() and campaign != 'None' and campaign != 'nan'])
+    else:
+        all_campaigns = []
+    
+    selected_campaigns = st.sidebar.multiselect(
+        "Select specific campaigns (optional)",
+        options=all_campaigns,
+        default=[],
+        help="Filter deals by their associated contact's lemlist campaign"
+    )
+    
     # Stagnant deals filter
     st.sidebar.subheader("Stagnant Deals Filter")
     stagnant_threshold = st.sidebar.slider(
@@ -746,6 +869,11 @@ def main():
         # Apply deal selection filter
         if selected_deals:
             filtered_df = filtered_df[filtered_df['dealname'].isin(selected_deals)]
+        
+        # Apply campaign filter
+        if selected_campaigns:
+            # Handle mixed data types in campaign filtering
+            filtered_df = filtered_df[filtered_df['last_contact_lemlist_campaign'].astype(str).isin(selected_campaigns)]
     
     st.info(f"📊 **Deals after filtering:** {len(filtered_df)}")
     
@@ -764,7 +892,7 @@ def main():
     # Apply stage filter after creating matrix
     if selected_stages and not show_all_deals:
         # Get current stages (last non-empty column)
-        period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created']]
+        period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created', 'Lemlist Campaign']]
         before_stage_filter = len(matrix_df)
         matrix_df['Current Stage'] = matrix_df[period_columns].apply(
             lambda row: next((stage for stage in reversed(row) if stage), ''), axis=1
@@ -807,7 +935,7 @@ def main():
         st.metric(f"{frequency} Periods Analyzed", len(period_dates))
     with col3:
         # Count deals with stage changes
-        period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created']]
+        period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created', 'Lemlist Campaign']]
         changes = 0
         for _, row in matrix_df.iterrows():
             stages = [stage for stage in row[period_columns] if stage]
@@ -823,7 +951,7 @@ def main():
     display_df = matrix_df.copy()
     
     # Apply styling to period columns with better styling
-    period_columns = [col for col in display_df.columns if col not in ['Deal Name', 'Deal ID', 'Created']]
+    period_columns = [col for col in display_df.columns if col not in ['Deal Name', 'Deal ID', 'Created', 'Last Contact', 'Lemlist Campaign']]
     
     # Create styled dataframe with borders and better colors
     styled_df = display_df.style.map(style_cell, subset=period_columns)
@@ -847,7 +975,7 @@ def main():
         ]}
     ])
     
-    # Display the table with frozen columns and clickable deal names
+    # Display the table with proper frozen columns using CSS
     display_df_with_links = display_df.copy()
     
     # Get deal IDs and create HubSpot URLs
@@ -862,27 +990,48 @@ def main():
     display_df_with_links['Deal Name'] = [f'<a href="{url}" target="_blank" style="color: #0066cc; text-decoration: none;">{name}</a>' for name, url in zip(deal_names, hubspot_urls)]
     
     # Create styled dataframe with HTML links
-    styled_df_with_links = display_df_with_links.style.map(style_cell, subset=[col for col in display_df_with_links.columns if col not in ['Deal Name', 'Deal ID', 'Created']])
+    styled_df_with_links = display_df_with_links.style.map(style_cell, subset=[col for col in display_df_with_links.columns if col not in ['Deal Name', 'Deal ID', 'Created', 'Lemlist Campaign']])
     
-    # Add custom CSS for frozen columns
+    # Add CSS for frozen columns - only freeze first 2 columns
     frozen_css = """
     <style>
-    .dataframe-container {
-        overflow-x: auto;
+    .dataframe {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        table-layout: fixed;
     }
     .dataframe th:first-child,
     .dataframe td:first-child {
-        position: sticky;
-        left: 0;
-        background-color: white;
-        z-index: 1;
+        position: sticky !important;
+        left: 0 !important;
+        background-color: white !important;
+        z-index: 10 !important;
+        border-right: 2px solid #dee2e6 !important;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+        width: 200px !important;
+        min-width: 200px !important;
+        max-width: 200px !important;
     }
     .dataframe th:nth-child(2),
     .dataframe td:nth-child(2) {
-        position: sticky;
-        left: 200px;
-        background-color: white;
-        z-index: 1;
+        position: sticky !important;
+        left: 200px !important;
+        background-color: white !important;
+        z-index: 10 !important;
+        border-right: 2px solid #dee2e6 !important;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+        width: 100px !important;
+        min-width: 100px !important;
+        max-width: 100px !important;
+    }
+    .dataframe th:first-child {
+        border-top-left-radius: 8px;
+    }
+    .dataframe td:first-child,
+    .dataframe td:nth-child(2) {
+        font-weight: 500;
+        padding: 8px !important;
     }
     </style>
     """
