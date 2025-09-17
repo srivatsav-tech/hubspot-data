@@ -64,7 +64,10 @@ class HubSpotExtractor:
             "hs_v2_date_entered_1155516059",
             "hs_v2_date_entered_1158033067",
             "hs_v2_date_entered_1053507879",
-            "hs_v2_date_entered_1155410330"
+            "hs_v2_date_entered_1155410330",
+            "hs_deal_stage_probability",
+            "hs_deal_amount",
+            "hubspot_owner_id"
         ]
     
     def get_all_deals(self, properties: List[str], limit: int = 100) -> List[Dict[str, Any]]:
@@ -325,26 +328,26 @@ def create_period_matrix(df, start_date, end_date, frequency):
     if end_date.tzinfo is None:
         end_date = end_date.replace(tzinfo=timezone.utc)
     
-    # Generate period dates based on frequency (latest periods first)
+    # Generate period dates based on frequency (oldest periods first)
     period_dates = []
-    current_date = end_date
+    current_date = start_date
     
     if frequency == 'Daily':
-        while current_date >= start_date:
+        while current_date <= end_date:
             period_dates.append(current_date)
-            current_date -= timedelta(days=1)
+            current_date += timedelta(days=1)
     elif frequency == 'Weekly':
-        while current_date >= start_date:
+        while current_date <= end_date:
             period_dates.append(current_date)
-            current_date -= timedelta(weeks=1)
+            current_date += timedelta(weeks=1)
     elif frequency == 'Monthly':
-        while current_date >= start_date:
+        while current_date <= end_date:
             period_dates.append(current_date)
-            # Move to previous month
-            if current_date.month == 1:
-                current_date = current_date.replace(year=current_date.year - 1, month=12)
+            # Move to next month
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1)
             else:
-                current_date = current_date.replace(month=current_date.month - 1)
+                current_date = current_date.replace(month=current_date.month + 1)
     
     # Create matrix data
     matrix_data = []
@@ -353,10 +356,14 @@ def create_period_matrix(df, start_date, end_date, frequency):
         # Get deal progression
         progression = get_deal_stage_progression(deal)
         
-        # Create row for this deal
+        # Create row for this deal with HubSpot URL
+        deal_id = deal['deal_id']
+        deal_name = deal['dealname']
+        deal_url = f"https://app.hubspot.com/contacts/{os.getenv('HUBSPOT_PORTAL_ID', 'your-portal-id')}/deal/{deal_id}"
+        
         deal_row = {
-            'Deal Name': deal['dealname'],
-            'Deal ID': deal['deal_id'],
+            'Deal Name': f'<a href="{deal_url}" target="_blank">{deal_name}</a>',
+            'Deal ID': deal_id,
             'Created': deal['created_at'].strftime('%Y-%m-%d') if pd.notna(deal['created_at']) else 'Unknown'
         }
         
@@ -394,6 +401,35 @@ def create_period_matrix(df, start_date, end_date, frequency):
         matrix_data.append(deal_row)
     
     return pd.DataFrame(matrix_data), period_dates
+
+def calculate_stagnant_deals(matrix_df, period_dates, frequency):
+    """Calculate deals that haven't changed stage for n periods"""
+    stagnant_deals = []
+    period_columns = [col for col in matrix_df.columns if col not in ['Deal Name', 'Deal ID', 'Created']]
+    
+    for _, row in matrix_df.iterrows():
+        stages = [stage for stage in row[period_columns] if stage]
+        if len(stages) > 0:
+            # Find the last stage change
+            last_stage = stages[-1]
+            stagnant_periods = 0
+            
+            # Count consecutive periods with the same stage from the end
+            for i in range(len(stages) - 1, -1, -1):
+                if stages[i] == last_stage:
+                    stagnant_periods += 1
+                else:
+                    break
+            
+            stagnant_deals.append({
+                'deal_name': row['Deal Name'],
+                'deal_id': row['Deal ID'],
+                'current_stage': last_stage,
+                'stagnant_periods': stagnant_periods,
+                'total_periods': len([s for s in stages if s])
+            })
+    
+    return pd.DataFrame(stagnant_deals)
 
 def style_cell(value):
     """Style individual cells with better colors and black text"""
@@ -681,6 +717,21 @@ def main():
         default=[]
     )
     
+    # Stagnant deals filter
+    st.sidebar.subheader("Stagnant Deals Filter")
+    stagnant_threshold = st.sidebar.slider(
+        "Show deals stagnant for more than N periods",
+        min_value=1,
+        max_value=20,
+        value=3,
+        help="Filter deals that haven't changed stage for more than N periods"
+    )
+    show_stagnant_only = st.sidebar.checkbox(
+        "Show only stagnant deals",
+        value=False,
+        help="Show only deals that haven't changed stage for more than the threshold"
+    )
+    
     # Apply filters
     filtered_df = df.copy()
     
@@ -725,6 +776,29 @@ def main():
         st.sidebar.markdown(f"After stage filter: {after_stage_filter} (removed {before_stage_filter - after_stage_filter})")
     elif show_all_deals:
         st.sidebar.markdown("Stage filter bypassed")
+    
+    # Apply stagnant deals filter
+    if show_stagnant_only:
+        stagnant_df = calculate_stagnant_deals(matrix_df, period_dates, frequency)
+        stagnant_deal_ids = stagnant_df[stagnant_df['stagnant_periods'] > stagnant_threshold]['deal_id'].tolist()
+        before_stagnant_filter = len(matrix_df)
+        matrix_df = matrix_df[matrix_df['Deal ID'].isin(stagnant_deal_ids)]
+        after_stagnant_filter = len(matrix_df)
+        st.sidebar.markdown(f"After stagnant filter: {after_stagnant_filter} (removed {before_stagnant_filter - after_stagnant_filter})")
+        
+        # Show stagnant deals summary
+        if not stagnant_df.empty:
+            st.sidebar.subheader("Stagnant Deals Summary")
+            stagnant_summary = stagnant_df[stagnant_df['stagnant_periods'] > stagnant_threshold]
+            if not stagnant_summary.empty:
+                st.sidebar.dataframe(
+                    stagnant_summary[['deal_name', 'current_stage', 'stagnant_periods']].rename(columns={
+                        'deal_name': 'Deal',
+                        'current_stage': 'Stage',
+                        'stagnant_periods': 'Periods'
+                    }),
+                    height=200
+                )
     
     # Display metrics
     col1, col2, col3 = st.columns(3)
@@ -774,7 +848,8 @@ def main():
         ]}
     ])
     
-    st.dataframe(styled_df, width='stretch', height=600)
+    # Display the table with HTML rendering for links and frozen deal name column
+    st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
     
     # Stage legend
     st.subheader("🎨 Stage Legend")

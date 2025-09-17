@@ -68,7 +68,10 @@ class SimpleHubSpotExtractor:
             "hs_v2_date_entered_1155516059",
             "hs_v2_date_entered_1158033067",
             "hs_v2_date_entered_1053507879",
-            "hs_v2_date_entered_1155410330"
+            "hs_v2_date_entered_1155410330",
+            "hs_deal_stage_probability",
+            "hs_deal_amount",
+            "hubspot_owner_id"
         ]
     
     def get_all_deals(self, properties: List[str], limit: int = 100) -> List[Dict[str, Any]]:
