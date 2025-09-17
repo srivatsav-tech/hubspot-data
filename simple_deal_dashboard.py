@@ -356,13 +356,12 @@ def create_period_matrix(df, start_date, end_date, frequency):
         # Get deal progression
         progression = get_deal_stage_progression(deal)
         
-        # Create row for this deal with HubSpot URL
+        # Create row for this deal
         deal_id = deal['deal_id']
         deal_name = deal['dealname']
-        deal_url = f"https://app.hubspot.com/contacts/{os.getenv('HUBSPOT_PORTAL_ID', 'your-portal-id')}/deal/{deal_id}"
         
         deal_row = {
-            'Deal Name': f'<a href="{deal_url}" target="_blank">{deal_name}</a>',
+            'Deal Name': deal_name,
             'Deal ID': deal_id,
             'Created': deal['created_at'].strftime('%Y-%m-%d') if pd.notna(deal['created_at']) else 'Unknown'
         }
@@ -848,8 +847,48 @@ def main():
         ]}
     ])
     
-    # Display the table with HTML rendering for links and frozen deal name column
-    st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
+    # Display the table with frozen columns and clickable deal names
+    display_df_with_links = display_df.copy()
+    
+    # Get deal IDs and create HubSpot URLs
+    deal_ids = display_df_with_links['Deal ID']
+    portal_id = os.getenv('HUBSPOT_PORTAL_ID', 'your-portal-id')
+    
+    # Create clickable links for deal names
+    deal_names = display_df_with_links['Deal Name']
+    hubspot_urls = [f"https://app.hubspot.com/contacts/{portal_id}/deal/{deal_id}" for deal_id in deal_ids]
+    
+    # Create HTML links for deal names
+    display_df_with_links['Deal Name'] = [f'<a href="{url}" target="_blank" style="color: #0066cc; text-decoration: none;">{name}</a>' for name, url in zip(deal_names, hubspot_urls)]
+    
+    # Create styled dataframe with HTML links
+    styled_df_with_links = display_df_with_links.style.map(style_cell, subset=[col for col in display_df_with_links.columns if col not in ['Deal Name', 'Deal ID', 'Created']])
+    
+    # Add custom CSS for frozen columns
+    frozen_css = """
+    <style>
+    .dataframe-container {
+        overflow-x: auto;
+    }
+    .dataframe th:first-child,
+    .dataframe td:first-child {
+        position: sticky;
+        left: 0;
+        background-color: white;
+        z-index: 1;
+    }
+    .dataframe th:nth-child(2),
+    .dataframe td:nth-child(2) {
+        position: sticky;
+        left: 200px;
+        background-color: white;
+        z-index: 1;
+    }
+    </style>
+    """
+    
+    st.markdown(frozen_css, unsafe_allow_html=True)
+    st.markdown(styled_df_with_links.to_html(escape=False), unsafe_allow_html=True)
     
     # Stage legend
     st.subheader("🎨 Stage Legend")
